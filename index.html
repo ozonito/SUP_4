@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guía Interactiva de Supuestos Tributarios</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chosen Palette: Neutral Professional -->
+    <!-- Application Structure Plan: La aplicación se estructura en secciones temáticas en lugar de seguir el orden numérico del informe. Este enfoque de "dashboard temático" permite a los usuarios centrarse en áreas específicas del derecho tributario (Gestión, Inspección, IGIC, etc.). La navegación es persistente en la parte superior para un acceso rápido. Cada ejercicio es un componente interactivo tipo "acordeón", donde el usuario debe hacer clic en una pregunta para ver la respuesta. Esta interacción activa previene la sobrecarga de información y fomenta el aprendizaje. Se eligió esta estructura porque organiza el conocimiento de manera lógica para el estudio, en lugar de ser una simple lista de problemas, mejorando así la usabilidad y la retención del contenido. -->
+    <!-- Visualization & Content Choices: 
+        - Ejercicio 1 (Tipos ITPAJD): Objetivo: Comparar. Método: Gráfico de barras (Chart.js) para visualizar la diferencia entre los tipos de gravamen. Justificación: Un gráfico es más impactante y fácil de entender que el texto solo.
+        - Ejercicio 7 (Plazos Inspección): Objetivo: Visualizar un proceso en el tiempo. Método: Cronograma interactivo (HTML/CSS/JS) para mostrar el inicio, el plazo máximo y el exceso de duración. Justificación: Clarifica el complejo cálculo de la prescripción y los efectos del incumplimiento de plazos.
+        - Ejercicios restantes: Objetivo: Informar y explicar. Método: Acordeones de texto (HTML/JS) que muestran la respuesta al hacer clic en la pregunta. Justificación: Permite al usuario enfocarse en una pregunta a la vez, haciendo el contenido denso más manejable.
+        - Iconografía: Se usan caracteres Unicode para representar temas (🔍, 📂, 📅), una solución ligera y sin imágenes.
+        - Librerías: Chart.js para gráficos en Canvas y Vanilla JS para toda la interactividad (acordeones, scroll, etc.), cumpliendo con los requisitos. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+        .accordion-content {
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            max-height: 0;
+            overflow: hidden;
+        }
+        .accordion-content.open {
+            max-height: 2000px; /* Suficientemente grande para el contenido */
+        }
+        .timeline {
+            display: flex;
+            flex-direction: column;
+            margin: 2rem 0;
+            position: relative;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 20px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #cbd5e1; /* slate-300 */
+        }
+        .timeline-item {
+            display: flex;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+        .timeline-dot {
+            flex-shrink: 0;
+            width: 2.5rem;
+            height: 2.5rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            z-index: 10;
+        }
+        .timeline-content {
+            margin-left: 1.5rem;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <header class="bg-white/80 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold text-slate-900">Guía Tributaria Interactiva</h1>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#gestion" class="text-slate-600 hover:bg-slate-200 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Gestión y Comprobación</a>
+                        <a href="#inspeccion" class="text-slate-600 hover:bg-slate-200 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Inspección</a>
+                        <a href="#recaudacion" class="text-slate-600 hover:bg-slate-200 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Recaudación</a>
+                        <a href="#igic" class="text-slate-600 hover:bg-slate-200 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">IGIC</a>
+                        <a href="#plazos" class="text-slate-600 hover:bg-slate-200 hover:text-slate-900 px-3 py-2 rounded-md text-sm font-medium">Plazos</a>
+                    </div>
+                </div>
+                 <div class="md:hidden">
+                    <select id="mobile-nav" class="bg-slate-100 border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5">
+                        <option>Navegar a...</option>
+                        <option value="#gestion">Gestión y Comprobación</option>
+                        <option value="#inspeccion">Inspección</option>
+                        <option value="#recaudacion">Recaudación</option>
+                        <option value="#igic">IGIC</option>
+                        <option value="#plazos">Plazos</option>
+                    </select>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        
+        <div class="text-center mb-12">
+            <h2 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Resolución de Supuestos Prácticos</h2>
+            <p class="mt-4 text-lg leading-8 text-slate-600 max-w-2xl mx-auto">Análisis interactivo de casos prácticos sobre la normativa tributaria española, con especial atención al Régimen Económico y Fiscal (REF) de Canarias.</p>
+        </div>
+
+        <!-- SECCIÓN 1: GESTIÓN Y COMPROBACIÓN -->
+        <section id="gestion" class="mb-16">
+            <div class="flex items-center mb-6">
+                <span class="text-3xl mr-4">📂</span>
+                <h3 class="text-2xl font-bold text-slate-900">Procedimientos de Gestión y Comprobación</h3>
+            </div>
+             <p class="mb-8 text-slate-600">Esta sección aborda los procedimientos que utiliza la Administración para verificar y controlar el correcto cumplimiento de las obligaciones tributarias. Se analizan las herramientas de gestión como la verificación de datos y la comprobación limitada, así como los mecanismos para corregir autoliquidaciones y valorar bienes.</p>
+
+            <div class="space-y-8">
+                <!-- EJERCICIO 1 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 1: ITPAJD - Adquisición de Vivienda Habitual</h4>
+                    <p class="text-slate-600 mb-4 italic">"Dos Rosa Jiménez, ha adquirido una vivienda a un particular el día 22 de septiembre de 2020, mediante escritura pública. Al presentar la autoliquidación del ITPAJD correspondiente, ha hecho constar el tipo de gravamen reducido aplicable a las adquisiciones por miembros de familia monoparental, ya que se trata de su vivienda habitual."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) Tipo de gravamen aplicable
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Doña Rosa puede aplicar el tipo superreducido del 1%, que prevalece sobre el general del 6,5% y el reducido del 5% para vivienda habitual, siempre que cumpla los requisitos de renta y condición de familia monoparental.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> El artículo 27.3.c) del Decreto Legislativo 1/2009 de Canarias establece este tipo del 1% para la adquisición de vivienda habitual por familias monoparentales que cumplan determinados límites de renta.</p>
+                                    <div class="chart-container">
+                                        <canvas id="ejercicio1Chart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                             <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) Plazo de presentación de la autoliquidación modelo 600
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                             <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> El plazo finalizó el 22 de octubre de 2020.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> El artículo 39.1 del Decreto Legislativo 1/2009 establece un plazo de un mes desde la fecha del acto o contrato (22 de septiembre de 2020).</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                             <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                c) ¿Cuál sería el procedimiento que tendría que utilizar la administración para comprobar la procedencia de aplicar el tipo reducido, que no impidiera posteriores comprobaciones administrativas?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                             <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> El procedimiento idóneo es el de Verificación de Datos. Es ágil y la liquidación provisional que de él se deriva no impide una futura comprobación limitada o inspección si se descubren nuevos hechos.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículos 131 a 133 de la Ley 58/2003, General Tributaria (LGT). Este procedimiento permite aclarar o justificar los datos declarados por el contribuyente.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EJERCICIO 2 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 2: Procedimiento de Gestión en IGIC</h4>
+                    <p class="text-slate-600 mb-4 italic">"Don Juan Manuel Sánchez es cantante profesional. El órgano de gestión competente quiere comprobar la posible deducibilidad de unas cuotas incluidas en sus declaraciones de IGIC de 2022 y 2023."</p>
+                     <div class="space-y-2">
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) ¿Qué tipo de procedimiento se debe iniciar?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> El Procedimiento de Comprobación Limitada (PCL) es el adecuado. Permite examinar la documentación justificativa (facturas, etc.) para verificar la deducibilidad, lo que excede el ámbito de una simple verificación de datos.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículos 136 a 140 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) ¿Puede finalizar ese procedimiento mediante la aclaración de las dudas que tiene la Administración con una diligencia?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> No. Una diligencia es un documento para hacer constar hechos, pero no pone fin al procedimiento. El PCL debe terminar mediante una resolución expresa, por caducidad o por el inicio de una inspección.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 139 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- EJERCICIO 4 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 4: Rectificación de Autoliquidaciones</h4>
+                    <p class="text-slate-600 mb-4 italic">"Don Juan del Toro, al preparar su declaración de 2023, se da cuenta en junio de 2024 que en la del Impuesto sobre el Patrimonio de 2019 omitió una deuda de 60.000€, lo que le hizo pagar 780€ de más."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) ¿Está a tiempo de corregir su autoliquidación?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Sí, está a tiempo. El derecho a solicitar la devolución prescribe a los cuatro años. El plazo para el IP 2019 finalizó el 30/06/2020, por lo que la prescripción opera el 30/06/2024. Al darse cuenta a principios de junio de 2024, está dentro del plazo.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 66 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) ¿Qué procedimiento debería seguir don Juan?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Debe presentar una Autoliquidación Rectificativa. Este es el nuevo procedimiento que sustituye a la antigua solicitud de rectificación. Don Juan debe presentar de nuevo el modelo 714 de 2019, corrigiendo el error, lo que generará automáticamente el derecho a la devolución de los 780€.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 120 de la LGT, modificado por la Ley 13/2023 y desarrollado por el RD 117/2024.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                c) ¿Qué plazo tiene la Administración para resolver este procedimiento?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> La Administración tiene 6 meses para ordenar el pago de la devolución. Si transcurrido ese plazo no ha ordenado el pago, empezarán a devengarse intereses de demora a favor del contribuyente.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 31 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EJERCICIO 9 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                     <h4 class="text-lg font-bold mb-2">Ejercicio 9: Comprobación de Valores y Tasación Pericial Contradictoria</h4>
+                    <p class="text-slate-600 mb-4 italic">"Doña Francisca del Rosario adquiere una vivienda en Lanzarote por 100.000€. Dos años después, la Administración inicia una comprobación de valores, sin VRC, determinando que el valor es de 250.000€."</p>
+                     <div class="space-y-2">
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) En este procedimiento, ¿tiene la administración la obligación de visitar el inmueble para su valoración?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Sí. Aunque la ley no lo exige explícitamente para todos los métodos, la jurisprudencia del Tribunal Supremo es clara: si se utiliza el método de dictamen de peritos, la visita física al inmueble es indispensable para garantizar una valoración individualizada y motivada. Una valoración sin visita es anulable.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal y Jurisprudencial:</strong> Artículo 57.1.e) de la LGT y sentencias consolidadas del Tribunal Supremo.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                e) ¿Cuáles son los efectos de no consignar en plazo los honorarios del perito tercero?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> La consecuencia es drástica. Si el interesado no deposita en plazo su parte de los honorarios del perito tercero, se considera que acepta la valoración del perito de la Administración, y el procedimiento de Tasación Pericial Contradictoria finaliza.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 135.3 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- EJERCICIO 12 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                     <h4 class="text-lg font-bold mb-2">Ejercicio 12: Procedimiento de Verificación de Datos</h4>
+                    <p class="text-slate-600 mb-4 italic">"Se plantean dos supuestos sobre la correcta aplicación del procedimiento de verificación de datos."</p>
+                     <div class="space-y-2">
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) El órgano de gestión de IGIC detecta que el resumen anual no coincide con las autoliquidaciones trimestrales. ¿Es correcto iniciar una verificación de datos?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Sí, es el procedimiento correcto. Se trata de una discrepancia entre datos declarados por el mismo obligado, que es uno de los supuestos específicos para los que está diseñado este procedimiento.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 131.b) de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) Un contribuyente declara una minusvalía del 78% pero a la Administración le consta un 35%. El interesado alega que el dato de la Administración es incorrecto. ¿Cómo debe actuar la Administración?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> La Administración debe darle trámite de audiencia. Debe comunicarle la discrepancia, darle un plazo para que presente alegaciones y aporte las pruebas que acrediten su grado de discapacidad (el certificado oficial). A la vista de la prueba, resolverá de forma motivada.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 108.4 de la LGT (presunción de veracidad de las declaraciones, que admite prueba en contrario).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECCIÓN 2: INSPECCIÓN -->
+        <section id="inspeccion" class="mb-16">
+            <div class="flex items-center mb-6">
+                <span class="text-3xl mr-4">🔍</span>
+                <h3 class="text-2xl font-bold text-slate-900">Procedimiento de Inspección</h3>
+            </div>
+            <p class="mb-8 text-slate-600">Aquí se analizan las actuaciones de mayor alcance de la Administración Tributaria. Se examinan las facultades de la Inspección, como la personación sin previo aviso, la adopción de medidas cautelares y los plazos máximos de duración del procedimiento, así como las consecuencias de su incumplimiento.</p>
+            <div class="space-y-8">
+                 <!-- EJERCICIO 3 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 3: Inicio de Inspección y Medidas Cautelares</h4>
+                    <p class="text-slate-600 mb-4 italic">"La Inspección se persona en las oficinas de un obligado tributario para iniciar un procedimiento. La documentación requerida no se encuentra en el local en ese momento."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) ¿Puede la Inspección iniciar un procedimiento de inspección de esta manera?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Sí, es perfectamente legal. La personación sin previo aviso en las instalaciones del obligado es una de las formas de inicio del procedimiento inspector previstas en la ley para garantizar la eficacia de la actuación.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 147.1 de la LGT y 177.1 del RGAT.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) ¿Qué medidas se pueden tomar para asegurar que no se oculten pruebas?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> La Inspección puede adoptar medidas cautelares para impedir la alteración o destrucción de pruebas. Las más comunes son el precinto de locales o archivos y la incautación de documentación.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 146 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                c) ¿Qué plazo se le daría al obligado para aportar la documentación?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> La norma general concede un plazo de 10 días hábiles, aunque la Inspección puede fijar uno distinto que sea razonable. Este plazo se hará constar en la diligencia. La aportación muy tardía (más de 9 meses) puede extender la duración del procedimiento inspector.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 92.3 del RGAT (plazo general) y 150.5 de la LGT (aportación tardía).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EJERCICIO 7 -->
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 7: Plazos de Inspección y Prescripción</h4>
+                    <p class="text-slate-600 mb-4 italic">"Inspección a Luna del Atlántico, S.L. iniciada el 12/05/2021 para 2019-2020, ampliada a 2018. La cifra de negocios en 2019 superó los 7M€. El 30/11/2023 se firma acta de conformidad."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) ¿A qué períodos se puede referir la regularización recogida en el acta?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> El procedimiento excedió su plazo máximo de 27 meses (que vencía el 12/08/2023). Esto implica que las actuaciones inspectoras no interrumpieron la prescripción. Por tanto, a 30/11/2023, habían prescrito todo el ejercicio 2018 y los tres primeros trimestres de 2019. La regularización solo puede afectar al 4T de 2019 y a todo 2020.</p>
+                                    <div id="ejercicio7-timeline" class="pt-4"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                c) ¿Hasta qué día se pueden computar intereses de demora?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Por incumplimiento del plazo máximo, no se exigen intereses de demora desde que se produce el incumplimiento (12/08/2023) hasta la finalización del procedimiento (30/11/2023). Los intereses solo se computan hasta el 12 de agosto de 2023.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 150.3 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 3: RECAUDACIÓN Y NOTIFICACIONES -->
+        <section id="recaudacion" class="mb-16">
+            <div class="flex items-center mb-6">
+                <span class="text-3xl mr-4">✉️</span>
+                <h3 class="text-2xl font-bold text-slate-900">Recaudación y Notificaciones</h3>
+            </div>
+            <p class="mb-8 text-slate-600">Este bloque se centra en la fase de cobro de las deudas tributarias y en las formalidades de la comunicación entre la Administración y los contribuyentes. Se estudian los medios de defensa frente al procedimiento de apremio y los requisitos para que una notificación sea legalmente válida.</p>
+            <div class="space-y-8">
+                <!-- EJERCICIO 5 -->
+                 <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 5: Notificación Defectuosa y Providencia de Apremio</h4>
+                    <p class="text-slate-600 mb-4 italic">"A Doña Hermenegilda intentan notificarle una liquidación de IGIC, pero no está en casa; le dejan un aviso. Luego se publica en el BOE. Días después, le notifican la providencia de apremio."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) La corrección del trámite de notificación realizado
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> El trámite es incorrecto. La ley exige dos intentos de notificación personal en el domicilio antes de acudir a la publicación en el BOE. Un simple aviso en el buzón no cuenta como un intento válido. Por tanto, la liquidación nunca fue notificada correctamente.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículos 111 y 112 de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) ¿Qué medio de defensa podría utilizar la interesada frente a la providencia de apremio?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Análisis y Conclusión:</strong> Puede formular oposición a la providencia de apremio, alegando como motivo la "falta de notificación de la liquidación". Es uno de los motivos tasados y, en este caso, totalmente fundado.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Artículo 167.3.c) de la LGT.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 4: IGIC -->
+        <section id="igic" class="mb-16">
+            <div class="flex items-center mb-6">
+                <span class="text-3xl mr-4">🇮🇨</span>
+                <h3 class="text-2xl font-bold text-slate-900">Impuesto General Indirecto Canario (IGIC)</h3>
+            </div>
+            <p class="mb-8 text-slate-600">Sección dedicada al impuesto indirecto específico de Canarias. Se exploran casos sobre el derecho a la deducción de cuotas soportadas, la correcta regularización de operaciones y diversas obligaciones formales, como la facturación o la presentación de declaraciones, para distintos regímenes y tipos de empresarios.</p>
+            <div class="space-y-8">
+                 <!-- EJERCICIO 8 -->
+                 <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 8: Derecho a la Deducción en el IGIC</h4>
+                    <p class="text-slate-600 mb-4 italic">"Determinar el derecho a la deducción de las cuotas soportadas del IGIC en las siguientes operaciones:"</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) Un dentista que adquiere un aparato para realizar radiografías.
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Conclusión:</strong> No es deducible. Los servicios de dentista están exentos de IGIC sin derecho a deducción, por lo que no puede deducir las cuotas soportadas en sus adquisiciones.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                b) Un arrendador que adquiere un apartamento para alquilar a turistas y para disfrutarlo dos meses al año.
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Conclusión:</strong> Es deducible parcialmente. Puede deducir el IGIC en proporción al uso empresarial (10 meses de 12). Deberá regularizar esta deducción en años sucesivos si cambia el grado de afectación.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <!-- EJERCICIO 14 -->
+                 <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicio 14: Obligaciones Formales en el IGIC</h4>
+                    <p class="text-slate-600 mb-4 italic">"Responder a estas cuestiones sobre obligaciones formales:"</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                a) ¿Están los sujetos pasivos del IGIC acogidos al régimen simplificado obligados a emitir factura en todo caso?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Conclusión:</strong> No. La regla general es que no están obligados. Sin embargo, sí deben emitir factura por las transmisiones de sus activos fijos y cuando las cuotas se determinen por volumen de ingresos.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                h) ¿Es cierto que todos los sujetos pasivos obligados a presentar autoliquidaciones periódicas del IGIC deben presentar también una declaración resumen anual?
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Conclusión:</strong> Falso. Existen excepciones. Los sujetos pasivos acogidos al régimen de comerciantes minoristas y, de forma destacada, los que están en el Suministro Inmediato de Información (SII), están exonerados de presentar el resumen anual (modelo 425).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓN 5: PLAZOS -->
+        <section id="plazos" class="mb-16">
+            <div class="flex items-center mb-6">
+                <span class="text-3xl mr-4">📅</span>
+                <h3 class="text-2xl font-bold text-slate-900">Plazos y Cómputo de Intereses</h3>
+            </div>
+            <p class="mb-8 text-slate-600">La correcta determinación de los plazos es fundamental en el ámbito tributario. Esta sección desglosa cómo se calculan los plazos de pago en período voluntario tras una liquidación administrativa y hasta qué fecha se computan los intereses de demora en los diferentes tipos de actas de inspección.</p>
+            <div class="space-y-8">
+                 <!-- EJERCICIO 10 Y 11 -->
+                 <div class="bg-white p-6 rounded-xl shadow-md">
+                    <h4 class="text-lg font-bold mb-2">Ejercicios 10 y 11: Cómputo de Intereses y Plazos de Pago Voluntario</h4>
+                    <p class="text-slate-600 mb-4 italic">"Determinar la fecha final para el cálculo de intereses de demora y el fin del período voluntario de pago en diferentes supuestos de liquidación."</p>
+                    <div class="space-y-2">
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                Caso a) Acta de conformidad firmada el 13/10/2020
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Intereses de demora:</strong> Se computan hasta el 13/11/2020 (un mes después de la firma).</p>
+                                    <p><strong class="text-slate-700">Fin del plazo de pago voluntario:</strong> La liquidación se entiende notificada el 13/11/2020. Al ser notificada en la primera quincena, el plazo de pago vence el 20 del mes siguiente, es decir, el 20/12/2020.</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item border-t border-slate-200 pt-2">
+                            <button class="accordion-header w-full text-left font-semibold text-slate-700 hover:text-blue-600 flex justify-between items-center py-2">
+                                Caso d) Liquidación de gestión notificada el 22/10/2020
+                                <span class="transform transition-transform duration-300">▼</span>
+                            </button>
+                            <div class="accordion-content">
+                                <div class="pt-2 pb-4 text-slate-600 space-y-4">
+                                    <p><strong class="text-slate-700">Intereses de demora:</strong> Se computan hasta la fecha en que se dicta la liquidación (17/10/2020).</p>
+                                    <p><strong class="text-slate-700">Fin del plazo de pago voluntario:</strong> Al ser notificada en la segunda quincena (22/10), el plazo vence el día 5 del segundo mes posterior, es decir, el 05/12/2020.</p>
+                                    <p><strong class="text-slate-700">Fundamento Legal:</strong> Art. 26 LGT (intereses) y Art. 62.2 LGT (plazos de pago).</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-800 text-white mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center text-sm">
+            <p>Este es un material de estudio interactivo. La información presentada tiene fines pedagógicos y no sustituye el asesoramiento legal profesional.</p>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const accordionItems = document.querySelectorAll('.accordion-item');
+    accordionItems.forEach(item => {
+        const header = item.querySelector('.accordion-header');
+        const content = item.querySelector('.accordion-content');
+        const icon = header.querySelector('span');
+
+        header.addEventListener('click', () => {
+            const isOpen = content.classList.contains('open');
+
+            document.querySelectorAll('.accordion-content.open').forEach(openContent => {
+                if (openContent !== content) {
+                    openContent.classList.remove('open');
+                    openContent.style.padding = '0px';
+                    const otherIcon = openContent.previousElementSibling.querySelector('span');
+                    if(otherIcon) otherIcon.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            if (isOpen) {
+                content.classList.remove('open');
+                content.style.padding = '0px';
+                if(icon) icon.style.transform = 'rotate(0deg)';
+            } else {
+                content.classList.add('open');
+                content.style.padding = '0.5rem 0 1rem 0';
+                 if(icon) icon.style.transform = 'rotate(180deg)';
+            }
+        });
+    });
+
+    const mobileNav = document.getElementById('mobile-nav');
+    if (mobileNav) {
+        mobileNav.addEventListener('change', (e) => {
+            if (e.target.value) {
+                const element = document.querySelector(e.target.value);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+        });
+    }
+
+    const ctx1 = document.getElementById('ejercicio1Chart');
+    if(ctx1) {
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: ['General', 'Vivienda Habitual', 'Familia Monoparental'],
+                datasets: [{
+                    label: 'Tipo de gravamen ITPAJD (%)',
+                    data: [6.5, 5.0, 1.0],
+                    backgroundColor: [
+                        'rgba(100, 116, 139, 0.6)', // slate-500
+                        'rgba(51, 102, 255, 0.6)',  // blue-600
+                        'rgba(22, 163, 74, 0.6)'    // green-600
+                    ],
+                    borderColor: [
+                        'rgba(100, 116, 139, 1)',
+                        'rgba(51, 102, 255, 1)',
+                        'rgba(22, 163, 74, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: true,
+                        text: 'Comparativa de Tipos de Gravamen en ITPAJD (Canarias)',
+                        padding: {
+                            top: 10,
+                            bottom: 20
+                        },
+                        font: {
+                            size: 16
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return value + '%'
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const timelineContainer = document.getElementById('ejercicio7-timeline');
+    if (timelineContainer) {
+        const timelineData = [
+            { date: '12/05/2021', event: 'Inicio Inspección', color: 'bg-blue-500 text-white', icon: '▶️' },
+            { date: '12/08/2023', event: 'Fin Plazo Máximo (27 meses)', color: 'bg-yellow-500 text-black', icon: '⏳' },
+            { date: '30/11/2023', event: 'Firma Acta (Fuera de Plazo)', color: 'bg-red-500 text-white', icon: '✍️' },
+            { date: '', event: 'Consecuencia: El período entre el 12/08/23 y el 30/11/23 no devenga intereses de demora. La prescripción no se interrumpió hasta el 12/08/23.', color: 'bg-slate-100 text-slate-700', icon: '❗' }
+        ];
+
+        let timelineHTML = '<div class="timeline">';
+        timelineData.forEach(item => {
+            timelineHTML += `
+                <div class="timeline-item">
+                    <div class="timeline-dot ${item.color}">${item.icon}</div>
+                    <div class="timeline-content">
+                        <p class="font-bold text-slate-800">${item.event}</p>
+                        ${item.date ? `<time class="text-sm text-slate-500">${item.date}</time>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        timelineHTML += '</div>';
+        timelineContainer.innerHTML = timelineHTML;
+    }
+});
+</script>
+</body>
+</html>
